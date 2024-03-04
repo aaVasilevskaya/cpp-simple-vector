@@ -2,10 +2,12 @@
 
 #include <stdexcept>
 #include <initializer_list>
-#include "array_ptr.h"
 #include <iostream>
 #include <utility>
 #include <algorithm>
+#include <cassert>
+
+#include "array_ptr.h"
 
 class ReserveProxyObj {
 public:
@@ -30,7 +32,7 @@ public:
 
     // Создаёт вектор из size элементов, инициализированных значением по умолчанию
     explicit SimpleVector(size_t size)
-    :capacity_(size), size_(size), vector_(ArrayPtr<Type>(capacity_)) {
+    :capacity_(size), size_(size), vector_(capacity_) {
         for(size_t i = 0; i < size_; i++){
             vector_[i] = Type();
         }
@@ -38,7 +40,7 @@ public:
 
     // Создаёт вектор из size элементов, инициализированных значением value
     SimpleVector(size_t size, const Type& value)
-    : capacity_(size), size_(size), vector_(ArrayPtr<Type>(capacity_)) {
+    : capacity_(size), size_(size), vector_(capacity_) {
         std::fill(this->begin(), this->end(), value);
     }
 
@@ -46,7 +48,7 @@ public:
     SimpleVector(std::initializer_list<Type> init)
     :capacity_(init.size()),
      size_(init.size()),
-     vector_(ArrayPtr<Type>(capacity_)){
+     vector_(capacity_){
         size_t i =0;
         for(auto iter = init.begin(); iter != init.end(); iter++, i++){
             vector_[i] = Type(*iter);
@@ -56,7 +58,7 @@ public:
     SimpleVector(const SimpleVector& other)
     : capacity_(other.capacity_),
       size_(other.size_),
-      vector_(ArrayPtr<Type>(capacity_)){
+      vector_(capacity_){
         std::copy(other.begin(), other.end(), begin());
     }
 
@@ -87,7 +89,7 @@ public:
     }
 
     bool IsEmpty() const noexcept {
-        return (size_ == 0 ? true:false);
+        return (size_ == 0);
     }
 
     // Возвращает ссылку на элемент с индексом index
@@ -205,7 +207,9 @@ public:
     // Если перед вставкой значения вектор был заполнен полностью,
     // вместимость вектора должна увеличиться вдвое, а для вектора вместимостью 0 стать равной 1
     Iterator Insert(ConstIterator pos, const Type& value) {
-        size_t index = std::distance(cbegin(), pos);
+        size_t index = static_cast<size_t>(std::distance(cbegin(), pos));
+        assert(index <= size_);
+
         if(size_ == capacity_){
             ResizeCapacity(size_ == 0 ? 1 : size_ * 2);
         }
@@ -216,7 +220,9 @@ public:
     }
 
     Iterator Insert(ConstIterator pos,Type&& value) {
-        size_t index = std::distance(cbegin(), pos);
+        size_t index = static_cast<size_t>(std::distance(cbegin(), pos));
+        assert(index < size_);
+
         if(size_ == capacity_){
             ResizeCapacity(size_ == 0 ? 1 : size_ * 2);
         }
@@ -228,11 +234,13 @@ public:
 
     // "Удаляет" последний элемент вектора. Вектор не должен быть пустым
     void PopBack() noexcept {
-        if(!IsEmpty())size_--;
+        assert(!IsEmpty());
+        size_--;
     }
 
     // Удаляет элемент вектора в указанной позиции
     Iterator Erase(ConstIterator pos) {
+        assert(pos >= cbegin() && pos < cend());
         Type* erased_pos = const_cast<Type*>(pos);
         std::move(erased_pos + 1, this->end(), erased_pos);
         size_--;
